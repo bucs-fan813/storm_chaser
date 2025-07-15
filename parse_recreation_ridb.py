@@ -36,6 +36,7 @@ session.headers.update(HEADERS)
 
 all_rv: List[Any] = []
 OFFSET: int = 0
+INDEX: int = 0
 LIMIT: int = 50
 OUTPUT_CSV: str = "RV_Sites.csv"
 facilities: Set[Any] = set()
@@ -80,17 +81,15 @@ try:
                     "FacilityLongitude": facility_data.get("FacilityLongitude"),
                     "FacilityLatitude": facility_data.get("FacilityLatitude"),
                     "FacilityOrganization": facility_data.get("ORGANIZATION", []),
-                    "OrgId": organization_data.get("ParentOrgID", None),
+                    "OrgId": organization_data.get("OrgID", None),
                     "OrgName": organization_data.get("OrgName", None),
-                    "OrgURLAddress": organization_data.get("OrgURLAddress", None),
                     "OrgType": organization_data.get("OrgType", None),
-                    "OrgParentID": organization_data.get("OrgParentID", None),
                     "OrgAbbrevName": organization_data.get("OrgAbbrevName", None)
-                    # "RecAreaName": recreational_data.get("RecAreaName",[])
                 }
                 facilities.add(facility_id)
                 all_rv.append(record)
-        print(f"Processed {len(campsite_data)} records (offset {OFFSET}); found {len(all_rv)} RV sites so far.")
+        INDEX = len(campsite_data)
+        print(f"Fetched {INDEX} records ({OFFSET}-{OFFSET + INDEX}); found {len(all_rv)} RV sites so far.")
 
         OFFSET += LIMIT
         if OFFSET >= total_count:
@@ -100,7 +99,7 @@ try:
     df.to_csv(OUTPUT_CSV, index=False)
     print(f"--- Parsed data saved to {OUTPUT_CSV}---")
 
-    # Also print the CSV content to stdout
+    # Print the CSV content to stdout if we are just fetching a sample
     if OFFSET <= 200:
         print(f"\n--- Sample data fetched. Total RV-capable campsites: {len(all_rv)} ---")
         df.to_csv(sys.stdout, index=False)
