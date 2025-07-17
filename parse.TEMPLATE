@@ -1,0 +1,85 @@
+import os
+import sys
+import pandas as pd
+import requests
+from datetime import datetime
+from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from typing import Any, List, Set, Dict, Optional
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Set Globals
+DATA_SOURCE: str = 'SOURCE'                                             # Name of data source. eg. "NASS_USDA"
+TIMESTAMP: str = f'{datetime.now():%Y%m%dT%H%M%S}'                      # Current timestamp
+API_BASE_URL: str = 'https://URL'                                       # API URL endpoint
+API_KEY = os.environ.get(f'{DATA_SOURCE}_API_KEY')                      # API Key from .env file
+OUTPUT_FILENAME: str = f'{DATA_SOURCE}_{TIMESTAMP}.csv'                 # Output filename
+records: List[Dict] = []                                                # List to hold records
+
+# Define the retry strategy
+retries = Retry(
+    total=10,                                       # Maximum 5 retries
+    backoff_factor=3,                               # Exponential backoff (1s, 2s, 4s, etc.)
+    status_forcelist=[502, 503, 504, 429, 403],     # Retry on these HTTP status codes
+    allowed_methods=["GET"],                        # Apply retry only to GET requests
+    backoff_max=60                                  # Maximum backoff time of 60 seconds
+)
+
+# Create a session and mount the adapter
+session: requests.Session = requests.Session()
+session.mount("https://", HTTPAdapter(max_retries=retries))
+# session.headers.update(HEADERS)
+
+# Define prototypes
+# example: List[Dict[str, Any]] = []
+
+
+
+# Fetch data from API
+def get_datapoint(item: str) -> str | None:
+    params = {
+        "key": API_KEY,
+        "FIELD": "VALUE",
+    }
+    response: requests.Response = session.get(API_BASE_URL, params=params)
+    response.raise_for_status()
+    data: dict[str, Any] = response.json()
+    if data:
+        return data["data"][0].get("Value")
+    else:
+        return None
+
+# Main execution
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        print(f"Fetching {DATA_SOURCE} data from {API_BASE_URL} =>")
+    elif sys.argv[1] in ["--help", "-h", "/?"]:
+        print(f"Usage: {sys.argv[0]} [path_to_csv]")
+        sys.exit(0)
+    elif len(sys.argv) == 2:
+        CSV_FILE=sys.argv[1] # CSV file path passed as command-line argument
+        print(f"Fetching {DATA_SOURCE} data from {CSV_FILE}...")
+    else:
+        print(f"Usage: {sys.argv[0]} [path_to_csv]")
+        sys.exit(1)
+
+
+# TODO: Read CSV from argv[1] if provided, otherwise use API_BASE_URL
+for item in places:
+    example: str = f'{item.get("VALUE")}'
+    record = {
+        "Place Names": item,                           # Needed for Google Maps API WKT (Well-Known Text: https://cloud.google.com/bigquery/docs/geospatial-data)
+        "CUSTOM_FIELD": f'{get_datapoint(example)}',    # Example of fetching data from API
+    }
+    records.append(item)
+    print(f"Processing: {record.get('Place Names')}")
+
+if len(records) > 0:
+    print(f"--- {DATA_SOURCE} data fetched: {len(records)} records ---")
+    print(f"--- Saved to {OUTPUT_FILENAME} ---")
+    df: pd.DataFrame = pd.json_normalize(records)
+    # df.to_csv(sys.stdout, index=False)
+    df.to_csv(OUTPUT_FILENAME, index=False)
