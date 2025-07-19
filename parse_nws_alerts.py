@@ -122,13 +122,13 @@ def main():
         # Print JSON to stdout
         for alert in all_alerts:
             print(f"- \
-                {alert['Place Names']} | \
-                {alert['Event']} | \
-                {alert['Headline']} | \
-                {alert['Severity']} | \
-                {alert['Urgency']} | \
-                {alert['Certainty']}"
-                )
+{alert['Place Names']} | \
+{alert['Event']} | \
+{alert['Headline']} | \
+{alert['Severity']} | \
+{alert['Urgency']} | \
+{alert['Certainty']}"
+)
         print(f"{len(alert_areas)} unique alerts.")
 
     except requests.exceptions.RequestException as e:

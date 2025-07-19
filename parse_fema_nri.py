@@ -145,16 +145,12 @@ def parse_fema_nri(disaster: str, df: pd.Series) -> pd.DataFrame:
 # Main execution
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print(f"Fetching {DATA_SOURCE} data from {API_BASE_URL} =>")
-    elif sys.argv[1] in ["--help", "-h", "/?"]:
-        print(f"Usage: {sys.argv[0]} [path_to_csv]")
-        sys.exit(0)
-    elif len(sys.argv) == 2:
         ZIP_FILENAME='NRI_Table_Counties.zip'
-        CSV_FILE=sys.argv[1] # CSV file path passed as command-line argument
+        CSV_FILE='NRI_Table_Counties.csv' # CSV file path passed as command-line argument
         # 1. Check if the zip already exists locally
         if not os.path.exists(ZIP_FILENAME):
-            print(f"Downloading {ZIP_FILENAME}...")
+            # print(f"Downloading {ZIP_FILENAME}...")
+            print(f"Fetching {DATA_SOURCE} data from {API_BASE_URL} =>")
             resp = requests.get(f'https://hazards.fema.gov/nri/Content/StaticDocuments/DataDownload//NRI_Table_Counties/{ZIP_FILENAME}', stream=True)
             resp.raise_for_status()
             with open(ZIP_FILENAME, "wb") as f:
@@ -177,23 +173,27 @@ if __name__ == "__main__":
         else:
             print(f"{CSV_FILE} already exists. Skipping extraction.")
         df = pd.read_csv(CSV_FILE, usecols=get_selected_columns(), low_memory=False)
+
+
+        # Filter the DataFrame where the overall risk is either 'Very High' or 'Relatively High'
+        if df is not None:
+            filtered_df: pd.Series = df[df["RISK_RATNG"].isin(["Very High", "Relatively High"])]
+            for disater in primary_disasters:
+                # Parse the CSV
+                parsed_data = parse_fema_nri(disater, filtered_df)
+                # parsed_data = parse_dictionary()
+
+                # Save parsed data to new CSV file
+                OUTPUT_CSV = f'{DATA_SOURCE}_{disater}_{TIMESTAMP}.csv'
+                parsed_data.to_csv(OUTPUT_CSV.upper(), index=False)
+                # parsed_data.to_csv(sys.stdout, index=False)
+                print(f"--- Saved to {OUTPUT_CSV.upper()} ---")
+        else:
+            print("There was an error loading the CSV file.")
+            sys.exit(1)
+    elif sys.argv[1] in ["--help", "-h", "/?"]:
+        print(f"Usage: {sys.argv[0]} [path_to_csv]")
+        sys.exit(0)
     else:
         print(f"Usage: {sys.argv[0]} [path_to_csv]")
         sys.exit(1)
-
-# Filter the DataFrame where the overall risk is either 'Very High' or 'Relatively High'
-if df is not None:
-    filtered_df: pd.Series = df[df["RISK_RATNG"].isin(["Very High", "Relatively High"])]
-    for disater in primary_disasters:
-        # Parse the CSV
-        parsed_data = parse_fema_nri(disater, filtered_df)
-        # parsed_data = parse_dictionary()
-
-        # Save parsed data to new CSV file
-        OUTPUT_CSV = f'{DATA_SOURCE}_{disater}_{TIMESTAMP}.csv'
-        parsed_data.to_csv(OUTPUT_CSV.upper(), index=False)
-        # parsed_data.to_csv(sys.stdout, index=False)
-        print(f"--- Saved to {OUTPUT_CSV.upper()} ---")
-else:
-    print("There was an error loading the CSV file.")
-    sys.exit(1)
